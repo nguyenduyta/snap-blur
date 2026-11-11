@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="28" fill="#1a73e8"/>
+  <!-- blades -->
+  <polygon points="40,74 54,84 104,16" fill="#fff"/>
+  <polygon points="88,74 74,84 24,16" fill="#fff"/>
+  <!-- handles -->
+  <circle cx="38" cy="94" r="15" fill="none" stroke="#fff" stroke-width="10"/>
+  <circle cx="90" cy="94" r="15" fill="none" stroke="#fff" stroke-width="10"/>
+  <!-- pivot -->
+  <circle cx="64" cy="62" r="5" fill="#1a73e8"/>
+</svg>
