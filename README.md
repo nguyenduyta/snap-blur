@@ -49,7 +49,7 @@ file only when you click **Save**. Nothing is uploaded.
 
 **2. Hide and annotate**, then **Copy** or **Save**.
 
-<img src="docs/toolbar.png" width="820" alt="Markup toolbar: blur, pixelate, redact, pen, rectangle, arrow, text, colors, sizes, undo, redo, copy">
+<img src="docs/toolbar.png" width="820" alt="Markup toolbar: blur, pixelate, redact, pen, rectangle, arrow, text, colors, sizes, undo, redo, save, copy, settings, close">
 
 Hide tools show a **Strength** slider. Draw tools show the colors and sizes.
 
@@ -81,6 +81,8 @@ the extension icon and choose **Options**.
   (or `edge://extensions/shortcuts`).
 - **Tool keys:** click a key, then press the new one. Keys must be unique. They apply to the
   next capture and sync across your browsers with your browser profile.
+
+<img src="docs/settings.png" width="420" alt="Settings page: capture shortcut with a Change button, editable tool keys, and the list of fixed keys">
 
 Defaults:
 
