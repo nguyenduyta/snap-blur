@@ -28,8 +28,9 @@ Nothing is saved to disk, and nothing is uploaded.
 - **Annotate:** Pen, Rectangle, Arrow, and Text, with 6 colors and 3 sizes.
 - **Undo / Redo** for every edit.
 - **Copy to clipboard** with one key, then paste anywhere.
-- **Private by design:** no `downloads`, no `storage`, no host permissions, and no
-  network requests. The image only lives in memory until you copy or cancel.
+- **Custom shortcuts:** change the capture shortcut and every tool key in Settings.
+- **Private by design:** no `downloads`, no host permissions, and no network requests.
+  The image only lives in memory until you copy or cancel. Only your key settings are stored.
 - **Works on strict pages:** the UI lives in a closed Shadow DOM and is built without
   `innerHTML`, so a page's CSP or Trusted Types do not block it.
 
@@ -71,6 +72,16 @@ To update, run `git pull`, then click the reload icon on the extension card.
 
 ## Keyboard shortcuts
 
+Open **Settings** to change them: the sliders button in the overlay toolbar, or right-click
+the extension icon and choose **Options**.
+
+- **Capture shortcut:** the browser owns it. **Change…** opens `chrome://extensions/shortcuts`
+  (or `edge://extensions/shortcuts`).
+- **Tool keys:** click a key, then press the new one. Keys must be unique. They apply to the
+  next capture and sync across your browsers with your browser profile.
+
+Defaults:
+
 **Select step**
 
 | Key | Action |
@@ -109,6 +120,7 @@ Japanese, and others) works: the `Enter` that confirms a composition does not pl
 | `activeTab` | Capture the visible tab, only after you click the icon or press the shortcut |
 | `scripting` | Show the selection and markup overlay in that tab |
 | `clipboardWrite` | Copy the final image to the clipboard |
+| `storage` | Save your tool key settings (never images) |
 
 ## Limitations
 
@@ -124,8 +136,10 @@ Japanese, and others) works: the `Enter` that confirms a composition does not pl
 
 ```
 manifest.json   Manifest V3, permissions, shortcut
-background.js   Captures the tab and injects the overlay
+background.js   Captures the tab, injects the overlay, opens Settings
+keys.js         Tool list and key settings, shared by overlay and Settings
 content.js      Overlay: area selection, markup editor, clipboard copy
+options.*       Settings page (keyboard shortcuts)
 icons/          icon.svg (source) and PNG sizes 16 / 48 / 128
 docs/           README images
 ```

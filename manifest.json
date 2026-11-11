@@ -1,14 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Snap Blur",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Capture the visible tab, crop and blur personal information, then copy to clipboard. Never saves files.",
-  "permissions": ["activeTab", "scripting", "clipboardWrite"],
+  "permissions": ["activeTab", "scripting", "clipboardWrite", "storage"],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "Snap Blur (Alt+Shift+S)",
+    "default_title": "Snap Blur",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
