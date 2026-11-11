@@ -1,7 +1,7 @@
 // Snap Blur in-page overlay.
 // Step 1 (select): frozen screenshot over the page, drag/resize an area, then Copy or Markup.
-// Step 2 (markup): blur / pixelate / black box inside the same tab, then Copy.
-// Nothing is saved: the image only lives in memory until the overlay closes.
+// Step 2 (markup): hide info (blur / pixelate / redact) or annotate (pen / rectangle / arrow / text),
+// then Copy. Nothing is saved: the image only lives in memory until the overlay closes.
 
 (() => {
   if (window.__snapBlur) return; // already injected into this tab's isolated world
@@ -10,7 +10,19 @@
     :host { all: initial; }
     [hidden] { display: none !important; }
     * { box-sizing: border-box; font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
-    .root { position: absolute; inset: 0; overflow: hidden; user-select: none; -webkit-user-select: none; color: #eee; }
+    .root { position: absolute; inset: 0; overflow: hidden; user-select: none; -webkit-user-select: none; color: #e8e8ec; }
+
+    button { all: unset; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+             height: 34px; padding: 0 12px; border-radius: 8px; color: #e8e8ec; cursor: pointer; white-space: nowrap; }
+    button:hover { background: #34343c; }
+    button:focus-visible { outline: 2px solid #4c8df6; outline-offset: 1px; }
+    button:disabled { opacity: .35; cursor: default; background: none; }
+    button.primary { background: #1a73e8; color: #fff; font-weight: 600; }
+    button.primary:hover { background: #2b7ff0; }
+    button svg { width: 18px; height: 18px; flex: none; }
+    .ib { width: 34px; padding: 0; }
+
+    /* step 1: select */
     .select { cursor: crosshair; }
     .shot { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
     .dim { position: absolute; inset: 0; background: rgba(0, 0, 0, .4); }
@@ -26,34 +38,83 @@
     .h[data-dir=s]  { left: 50%; top: 100%; cursor: ns-resize; }
     .h[data-dir=sw] { left: 0; top: 100%; cursor: nesw-resize; }
     .h[data-dir=w]  { left: 0; top: 50%; cursor: ew-resize; }
-    .bar, .hint { position: absolute; display: flex; align-items: center; gap: 4px; padding: 6px;
-                  background: #1c1c24; border: 1px solid #444; border-radius: 12px;
-                  box-shadow: 0 4px 16px rgba(0, 0, 0, .5); cursor: default; }
+    .float { position: absolute; display: flex; align-items: center; gap: 2px; padding: 4px;
+             background: #26262c; border: 1px solid #3a3a42; border-radius: 12px;
+             box-shadow: 0 6px 24px rgba(0, 0, 0, .45); cursor: default; }
     .hint { top: 12px; left: 50%; transform: translateX(-50%); padding-left: 14px; white-space: nowrap; }
-    button { all: unset; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
-             border-radius: 8px; color: #fff; cursor: pointer; white-space: nowrap; }
-    button:hover { background: #3a3a46; }
-    button:focus-visible { outline: 2px solid #1a73e8; }
-    button:disabled { opacity: .4; cursor: default; background: none; }
-    button.primary { background: #1a73e8; }
-    button.primary:hover { background: #2b7ff0; }
-    button.active { background: #1a3a66; box-shadow: inset 0 0 0 1px #1a73e8; }
-    .markup { background: #2b2b2b; display: flex; flex-direction: column; }
-    .top { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #3a3a3a; flex-wrap: wrap; }
-    .title { font-weight: 600; margin-right: auto; }
-    .group { display: flex; gap: 4px; }
-    .strength { display: flex; align-items: center; gap: 6px; color: #aaa; }
+    .hint span { color: #a8a8b0; margin-right: 6px; }
+
+    /* step 2: markup */
+    .markup { background: #18181c; display: flex; flex-direction: column; }
+    .top { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 8px 12px;
+           background: #26262c; border-bottom: 1px solid #0d0d10; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #fff; margin-right: 4px; }
+    .brand svg { width: 20px; height: 20px; color: #4c8df6; }
+    .seg { display: flex; gap: 2px; padding: 3px; background: #18181c; border-radius: 10px; }
+    .seg .ib { color: #b8b8c0; }
+    .seg .ib.active { background: #1a73e8; color: #fff; }
+    .sep { width: 1px; height: 24px; background: #3a3a42; margin: 0 2px; }
+    .opts { display: flex; align-items: center; gap: 10px; min-height: 34px; }
+    .opts label { display: flex; align-items: center; gap: 8px; color: #a8a8b0; }
+    .opts input[type=range] { width: 110px; accent-color: #1a73e8; }
+    .swatch { width: 22px; height: 22px; padding: 0; border-radius: 50%;
+              box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3); }
+    .swatch:hover { background: var(--c); transform: scale(1.1); }
+    .swatch.active { box-shadow: 0 0 0 2px #26262c, 0 0 0 4px #fff; }
+    .size { width: 28px; height: 28px; padding: 0; }
+    .size i { display: block; border-radius: 50%; background: currentColor; }
+    .size.active { background: #3a3a42; }
+    .spacer { flex: 1; }
     .stage { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .wrap { position: relative; line-height: 0; }
-    .wrap canvas { display: block; cursor: crosshair; box-shadow: 0 2px 16px rgba(0, 0, 0, .6); }
+    .wrap canvas { display: block; cursor: crosshair; box-shadow: 0 4px 24px rgba(0, 0, 0, .6); }
+    .wrap canvas.text-cursor { cursor: text; }
     .draw { position: absolute; border: 1px dashed #fff; outline: 1px dashed #000;
             background: rgba(26, 115, 232, .15); pointer-events: none; }
+    .text-in { position: absolute; margin: 0; padding: 0; border: 0; background: transparent; resize: none;
+               overflow: hidden; white-space: pre; field-sizing: content; min-width: 2ch; line-height: 1.25;
+               font-weight: 600; outline: 1px dashed rgba(255, 255, 255, .9); outline-offset: 4px;
+               box-shadow: 0 0 0 5px rgba(0, 0, 0, .25); }
     .toast { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 18px;
-             background: #323232; color: #fff; border-radius: 6px; box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
+             background: #26262c; color: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0, 0, 0, .5); }
   `;
 
-  const TOOL_KEYS = { b: "blur", p: "pixelate", k: "box" };
+  // 24x24 stroke icons. `fill: true` paths are filled instead of stroked.
+  const ICONS = {
+    blur: ["M12 3c3.2 4.2 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 2.8-6.8 6-11z"],
+    pixelate: ["M4 4h7v7H4zM13 13h7v7h-7z", { d: "M13 4h7v7h-7zM4 13h7v7H4z", fill: true }],
+    box: ["M3 7h18v10H3z", { d: "M6 10h12v4H6z", fill: true }],
+    pen: ["M4 20l1-4L16 5l3 3L8 19l-4 1zM14 7l3 3"],
+    rect: ["M4 6h16v12H4z"],
+    arrow: ["M5 19L19 5M10 5h9v9"],
+    text: ["M5 7V5h14v2M12 5v14M9 19h6"],
+    undo: ["M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"],
+    redo: ["M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"],
+    copy: ["M9 9h11v11H9zM5 15H4V4h11v1"],
+    close: ["M6 6l12 12M18 6L6 18"],
+    scissors: ["M8.5 8.5L20 20M15.5 8.5L4 20", "M3 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0M15 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0"],
+  };
+
+  const TOOLS = [
+    ["blur", "Blur", "B"],
+    ["pixelate", "Pixelate", "P"],
+    ["box", "Redact", "K"],
+    null,
+    ["pen", "Pen", "D"],
+    ["rect", "Rectangle", "R"],
+    ["arrow", "Arrow", "A"],
+    ["text", "Text", "T"],
+  ];
+  const TOOL_KEYS = Object.fromEntries(TOOLS.filter(Boolean).map(([n, , k]) => [k.toLowerCase(), n]));
+  const HIDE_TOOLS = new Set(["blur", "pixelate", "box"]);
+  const COLORS = ["#ff3b30", "#ffcc00", "#34c759", "#0a84ff", "#000000", "#ffffff"];
+  // CSS px; multiplied by the capture scale so results look the same on any display.
+  const SIZES = { s: { stroke: 2, text: 16, dot: 6 }, m: { stroke: 4, text: 22, dot: 10 }, l: { stroke: 7, text: 32, dot: 14 } };
+  const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';
   const MIN = 4; // smallest selection, CSS px
+
+  // Last used options, kept in memory while the tab lives.
+  const prefs = { tool: "blur", color: COLORS[0], size: "m", strength: 6 };
 
   let session = null;
 
@@ -72,6 +133,32 @@
     }
     for (const c of [].concat(children)) el.append(c);
     return el;
+  }
+
+  function icon(name) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("aria-hidden", "true");
+    for (const p of ICONS[name]) {
+      const { d, fill } = typeof p === "string" ? { d: p } : p;
+      const path = document.createElementNS(NS, "path");
+      path.setAttribute("d", d);
+      path.setAttribute("fill", fill ? "currentColor" : "none");
+      path.setAttribute("stroke", "currentColor");
+      path.setAttribute("stroke-width", "2");
+      path.setAttribute("stroke-linecap", "round");
+      path.setAttribute("stroke-linejoin", "round");
+      svg.append(path);
+    }
+    return svg;
+  }
+
+  // Icon button; `label` is shown as text unless `iconOnly`.
+  function btn(name, label, props = {}, iconOnly = false) {
+    const cls = [props.class, iconOnly && "ib"].filter(Boolean).join(" ");
+    return h("button", { ...props, class: cls, title: props.title ?? label, ariaLabel: label },
+      iconOnly ? [icon(name)] : [icon(name), label]);
   }
 
   function newCanvas(w, hgt) {
@@ -103,11 +190,10 @@
     bitmap.close();
 
     const host = document.createElement("snap-blur-overlay");
-    const hs = host.style;
     for (const [k, v] of Object.entries({
       position: "fixed", left: "0", top: "0", width: "100vw", height: "100vh",
       "z-index": "2147483647", display: "block", margin: "0", padding: "0",
-    })) hs.setProperty(k, v, "important");
+    })) host.style.setProperty(k, v, "important");
 
     const shadow = host.attachShadow({ mode: "closed" });
     const sheet = new CSSStyleSheet();
@@ -121,7 +207,8 @@
       // Image pixels per CSS pixel at capture time (device ratio x zoom).
       scaleX: shot.width / window.innerWidth,
       scaleY: shot.height / window.innerHeight,
-      view: null, // current mode: { root, copy(), undo?(), setTool?(), cancelDrag() }
+      view: null, // current step, see showSelect / showMarkup
+      cleanups: [],
     };
 
     host.addEventListener("wheel", (e) => e.preventDefault(), { passive: false });
@@ -131,11 +218,17 @@
     showSelect();
   }
 
-  function close() {
-    if (!session) return;
+  // Stop listening; the host stays until the caller removes it.
+  function detach() {
     window.removeEventListener("keydown", onKey, true);
-    session.host.remove();
+    for (const f of session.cleanups) f();
+    const s = session;
     session = null;
+    return s;
+  }
+
+  function close() {
+    if (session) detach().host.remove();
   }
 
   function setView(view) {
@@ -146,7 +239,23 @@
 
   function onKey(e) {
     if (!session) return;
+    // The overlay is modal: page shortcuts must not fire underneath it.
+    e.stopImmediatePropagation();
     const v = session.view;
+
+    if (v.textEditing?.()) {
+      // Let the text box receive normal typing; only Enter / Esc are ours.
+      // isComposing: Enter that confirms an IME (Vietnamese, Japanese) must not commit.
+      if (e.key === "Escape") {
+        e.preventDefault();
+        v.cancelText();
+      } else if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
+        e.preventDefault();
+        v.commitText();
+      }
+      return;
+    }
+
     const mod = e.ctrlKey || e.metaKey;
     const k = e.key.toLowerCase();
     let handled = true;
@@ -154,6 +263,8 @@
       if (!v.cancelDrag()) close();
     } else if (e.key === "Enter" || (mod && k === "c")) {
       v.copy();
+    } else if (mod && (k === "y" || (k === "z" && e.shiftKey)) && v.redo) {
+      v.redo();
     } else if (mod && k === "z" && v.undo) {
       v.undo();
     } else if (!mod && !e.altKey && v.setTool && TOOL_KEYS[k]) {
@@ -161,8 +272,6 @@
     } else {
       handled = false;
     }
-    // The overlay is modal: page shortcuts must not fire underneath it.
-    e.stopImmediatePropagation();
     if (handled) e.preventDefault();
   }
 
@@ -180,12 +289,10 @@
       return;
     }
     // Leave only a short confirmation, then remove everything.
-    const s = session;
-    s.view.root.remove();
+    session.view.root.remove();
     toast("Copied to clipboard");
+    const s = detach();
     s.host.style.setProperty("pointer-events", "none", "important");
-    window.removeEventListener("keydown", onKey, true);
-    session = null;
     setTimeout(() => s.host.remove(), 1200);
   }
 
@@ -213,15 +320,15 @@
       h("div", { class: "h", dataset: { dir: d } }),
     );
     const sel = h("div", { class: "sel", hidden: true }, handles);
-    const bar = h("div", { class: "bar", hidden: true }, [
-      h("button", { class: "primary", textContent: "Copy", title: "Copy (Enter)", onclick: () => copySelection() }),
-      h("button", { textContent: "Markup", title: "Blur / pixelate before copying", onclick: () => showMarkup(cropSelection()) }),
-      h("button", { textContent: "\u2715", title: "Cancel (Esc)", onclick: close }),
+    const bar = h("div", { class: "float bar", hidden: true }, [
+      btn("copy", "Copy", { class: "primary", title: "Copy (Enter)", onclick: () => copySelection() }),
+      btn("pen", "Markup", { title: "Hide info or annotate before copying", onclick: () => showMarkup(cropSelection()) }),
+      btn("close", "Cancel", { title: "Cancel (Esc)", onclick: close }, true),
     ]);
-    const hint = h("div", { class: "hint" }, [
+    const hint = h("div", { class: "float hint" }, [
       h("span", { textContent: "Drag to select an area" }),
       h("button", { textContent: "Whole screen", onclick: () => { rect = { x: 0, y: 0, w: vw, h: vh }; layout(); } }),
-      h("button", { textContent: "\u2715", title: "Cancel (Esc)", onclick: close }),
+      btn("close", "Cancel", { title: "Cancel (Esc)", onclick: close }, true),
     ]);
     const root = h("div", { class: "root select" }, [view, dim, sel, bar, hint]);
 
@@ -238,8 +345,6 @@
       if (dir && rect) drag = { mode: "resize", dir, start: { ...rect } };
       else if (e.target === sel && rect) drag = { mode: "move", p0: p, start: { ...rect } };
       else drag = { mode: "new", p0: p };
-      bar.hidden = true;
-      hint.hidden = true;
       update(p);
     });
 
@@ -334,66 +439,159 @@
   function showMarkup(base) {
     const scale = session.scaleX;
     let stack = [base];
-    let tool = "blur";
-    let drag = null; // { x0, y0, x1, y1 } in image px
+    let redoStack = [];
+    let drag = null; // { tool, color, width, pts: [{x, y}] } in image px
+    let textBox = null; // { el, x, y, px, color } while typing
+    let textPending = false;
 
     const canvas = newCanvas(base.width, base.height);
     const ctx = canvas.getContext("2d");
     const draw = h("div", { class: "draw", hidden: true });
-    const strength = h("input", { type: "range", min: 1, max: 10, value: 6 });
-    const toolBtns = [
-      ["blur", "Blur", "B"],
-      ["pixelate", "Pixelate", "P"],
-      ["box", "Black box", "K"],
-    ].map(([name, label, key]) =>
-      h("button", { textContent: label, title: `${label} (${key})`, dataset: { tool: name }, onclick: () => setTool(name) }),
-    );
-    const undoBtn = h("button", { textContent: "Undo", title: "Undo (Ctrl+Z)", onclick: undo });
-    const resetBtn = h("button", { textContent: "Reset", onclick: () => { stack = stack.slice(0, 1); render(); } });
+
+    // --- toolbar ---
+    const toolBtns = {};
+    const toolSeg = h("div", { class: "seg", role: "toolbar", ariaLabel: "Tools" });
+    for (const t of TOOLS) {
+      if (!t) {
+        toolSeg.append(h("span", { class: "sep" }));
+        continue;
+      }
+      const [name, label, key] = t;
+      toolBtns[name] = btn(name, label, { title: `${label} (${key})`, onclick: () => setTool(name) }, true);
+      toolSeg.append(toolBtns[name]);
+    }
+
+    const strength = h("input", {
+      type: "range", min: 1, max: 10, value: prefs.strength,
+      oninput: () => { prefs.strength = Number(strength.value); },
+    });
+    const hideOpts = h("div", { class: "opts" }, [h("label", {}, ["Strength", strength])]);
+
+    const swatches = COLORS.map((c) => {
+      const b = h("button", { class: "swatch", title: c, ariaLabel: `Color ${c}`, onclick: () => setColor(c) });
+      b.style.background = c;
+      b.style.setProperty("--c", c);
+      return b;
+    });
+    const sizeBtns = Object.entries(SIZES).map(([key, s]) => {
+      const dot = h("i");
+      dot.style.width = dot.style.height = `${s.dot}px`;
+      return h("button", { class: "size", dataset: { size: key }, title: `Size ${key.toUpperCase()}`, onclick: () => setSize(key) }, dot);
+    });
+    const drawOpts = h("div", { class: "opts" }, [
+      ...swatches,
+      h("span", { class: "sep" }),
+      ...sizeBtns,
+    ]);
+
+    const undoBtn = btn("undo", "Undo", { title: "Undo (Ctrl+Z)", onclick: undo }, true);
+    const redoBtn = btn("redo", "Redo", { title: "Redo (Ctrl+Shift+Z)", onclick: redo }, true);
+
     const top = h("div", { class: "top" }, [
-      h("span", { class: "title", textContent: "Snap Blur" }),
-      h("div", { class: "group" }, toolBtns),
-      h("label", { class: "strength" }, ["Strength", strength]),
-      h("div", { class: "group" }, [undoBtn, resetBtn]),
-      h("button", { class: "primary", textContent: "Copy", title: "Copy (Enter / Ctrl+C)", onclick: copy }),
-      h("button", { textContent: "\u2715", title: "Close (Esc)", onclick: close }),
+      h("div", { class: "brand" }, [icon("scissors"), "Snap Blur"]),
+      toolSeg,
+      h("span", { class: "sep" }),
+      hideOpts,
+      drawOpts,
+      h("span", { class: "spacer" }),
+      undoBtn,
+      redoBtn,
+      h("span", { class: "sep" }),
+      btn("copy", "Copy", { class: "primary", title: "Copy (Enter / Ctrl+C)", onclick: copy }),
+      btn("close", "Close", { title: "Close (Esc)", onclick: close }, true),
     ]);
     const wrap = h("div", { class: "wrap" }, [canvas, draw]);
     const stage = h("div", { class: "stage" }, wrap);
     const root = h("div", { class: "root markup" }, [top, stage]);
 
-    setView({ root, copy, undo, setTool, cancelDrag });
-    setTool(tool);
-    render();
+    // Toolbar clicks must not reach the canvas logic, but should commit pending text.
+    top.addEventListener("pointerdown", () => commitText());
+
+    setView({
+      root, copy, undo, redo, setTool, cancelDrag,
+      textEditing: () => !!textBox,
+      commitText,
+      cancelText,
+    });
+    setTool(prefs.tool);
+    setColor(prefs.color);
+    setSize(prefs.size);
+    fit();
+    paint();
+    window.addEventListener("resize", fit);
+    session.cleanups.push(() => window.removeEventListener("resize", fit));
+
+    // --- state ---
 
     function current() {
       return stack[stack.length - 1];
     }
 
-    function render() {
-      const c = current();
-      canvas.width = c.width;
-      canvas.height = c.height;
-      ctx.drawImage(c, 0, 0);
-      // Show at real CSS size, shrunk to fit the stage.
-      const fit = Math.min(1 / scale, (stage.clientWidth - 32) / c.width, (stage.clientHeight - 32) / c.height);
-      canvas.style.width = `${c.width * fit}px`;
-      canvas.style.height = `${c.height * fit}px`;
-      undoBtn.disabled = resetBtn.disabled = stack.length < 2;
+    function paint() {
+      ctx.drawImage(current(), 0, 0);
+      undoBtn.disabled = stack.length < 2;
+      redoBtn.disabled = redoStack.length === 0;
+    }
+
+    function push(c) {
+      stack.push(c);
+      redoStack = [];
+      paint();
+    }
+
+    function cloneCurrent() {
+      const out = newCanvas(canvas.width, canvas.height);
+      out.getContext("2d").drawImage(current(), 0, 0);
+      return out;
+    }
+
+    // Show at real CSS size, shrunk to fit the stage.
+    function fit() {
+      const k = Math.min(1 / scale, (stage.clientWidth - 48) / canvas.width, (stage.clientHeight - 48) / canvas.height);
+      canvas.style.width = `${canvas.width * k}px`;
+      canvas.style.height = `${canvas.height * k}px`;
     }
 
     function setTool(name) {
-      tool = name;
-      for (const b of toolBtns) b.classList.toggle("active", b.dataset.tool === name);
+      commitText();
+      prefs.tool = name;
+      for (const [n, b] of Object.entries(toolBtns)) b.classList.toggle("active", n === name);
+      const hide = HIDE_TOOLS.has(name);
+      hideOpts.hidden = !hide;
+      drawOpts.hidden = hide;
+      canvas.classList.toggle("text-cursor", name === "text");
+    }
+
+    function setColor(c) {
+      prefs.color = c;
+      for (const b of swatches) b.classList.toggle("active", b.title === c);
+      if (textBox) {
+        textBox.color = c;
+        textBox.el.style.color = c;
+      }
+    }
+
+    function setSize(key) {
+      prefs.size = key;
+      for (const b of sizeBtns) b.classList.toggle("active", b.dataset.size === key);
     }
 
     function undo() {
+      commitText();
       if (stack.length < 2) return;
-      stack.pop();
-      render();
+      redoStack.push(stack.pop());
+      paint();
+    }
+
+    function redo() {
+      if (!redoStack.length) return;
+      stack.push(redoStack.pop());
+      paint();
     }
 
     function copy() {
+      commitText();
+      paint();
       copyCanvas(canvas);
     }
 
@@ -401,25 +599,84 @@
       if (!drag) return false;
       drag = null;
       draw.hidden = true;
+      paint();
       return true;
     }
 
-    function apply(r) {
+    // --- drawing ---
+
+    function displayScale() {
+      return canvas.getBoundingClientRect().width / canvas.width;
+    }
+
+    function toImage(e) {
+      const b = canvas.getBoundingClientRect();
+      return {
+        x: clamp((e.clientX - b.left) * (canvas.width / b.width), 0, canvas.width),
+        y: clamp((e.clientY - b.top) * (canvas.height / b.height), 0, canvas.height),
+      };
+    }
+
+    function boxOf(a, b) {
+      const x = Math.round(Math.min(a.x, b.x));
+      const y = Math.round(Math.min(a.y, b.y));
+      return { x, y, w: Math.round(Math.max(a.x, b.x)) - x, h: Math.round(Math.max(a.y, b.y)) - y };
+    }
+
+    function last(d) {
+      return d.pts[d.pts.length - 1];
+    }
+
+    function drawShape(c, s) {
+      const a = s.pts[0];
+      const b = last(s);
+      c.save();
+      c.strokeStyle = c.fillStyle = s.color;
+      c.lineWidth = s.width;
+      c.lineCap = "round";
+      c.lineJoin = "round";
+      if (s.tool === "pen") {
+        c.beginPath();
+        c.moveTo(a.x, a.y);
+        for (const p of s.pts) c.lineTo(p.x, p.y);
+        if (s.pts.length === 1) c.lineTo(a.x + 0.01, a.y); // a click draws a dot
+        c.stroke();
+      } else if (s.tool === "rect") {
+        const r = boxOf(a, b);
+        c.strokeRect(r.x, r.y, r.w, r.h);
+      } else if (s.tool === "arrow") {
+        const ang = Math.atan2(b.y - a.y, b.x - a.x);
+        const head = Math.max(s.width * 3.5, 12 * scale);
+        // Stop the shaft inside the head so the round cap does not poke out of the tip.
+        c.beginPath();
+        c.moveTo(a.x, a.y);
+        c.lineTo(b.x - Math.cos(ang) * head * 0.7, b.y - Math.sin(ang) * head * 0.7);
+        c.stroke();
+        c.beginPath();
+        c.moveTo(b.x, b.y);
+        c.lineTo(b.x - head * Math.cos(ang - 0.45), b.y - head * Math.sin(ang - 0.45));
+        c.lineTo(b.x - head * Math.cos(ang + 0.45), b.y - head * Math.sin(ang + 0.45));
+        c.closePath();
+        c.fill();
+      }
+      c.restore();
+    }
+
+    function hideArea(r) {
       const src = current();
-      const level = Number(strength.value);
-      const out = newCanvas(src.width, src.height);
+      const level = prefs.strength;
+      const out = cloneCurrent();
       const o = out.getContext("2d");
-      o.drawImage(src, 0, 0);
       o.save();
       o.beginPath();
       o.rect(r.x, r.y, r.w, r.h);
       o.clip();
-      if (tool === "blur") {
+      if (drag.tool === "blur") {
         // Two passes: one Gaussian pass can leave large text guessable.
         o.filter = `blur(${Math.round(level * 2.5 * scale)}px)`;
         o.drawImage(src, 0, 0);
         o.drawImage(out, 0, 0);
-      } else if (tool === "pixelate") {
+      } else if (drag.tool === "pixelate") {
         const block = Math.max(2, Math.round(level * 2 * scale));
         const tw = Math.max(1, Math.ceil(r.w / block));
         const th = Math.max(1, Math.ceil(r.h / block));
@@ -434,61 +691,134 @@
         o.fillRect(r.x, r.y, r.w, r.h);
       }
       o.restore();
-      stack.push(out);
-      render();
+      push(out);
     }
 
-    function toImage(e) {
-      const b = canvas.getBoundingClientRect();
-      return {
-        x: clamp((e.clientX - b.left) * (canvas.width / b.width), 0, canvas.width),
-        y: clamp((e.clientY - b.top) * (canvas.height / b.height), 0, canvas.height),
-      };
+    function preview() {
+      if (HIDE_TOOLS.has(drag.tool)) {
+        const r = boxOf(drag.pts[0], last(drag));
+        const k = displayScale();
+        Object.assign(draw.style, {
+          left: `${r.x * k}px`, top: `${r.y * k}px`, width: `${r.w * k}px`, height: `${r.h * k}px`,
+        });
+        draw.hidden = false;
+      } else {
+        paint();
+        drawShape(ctx, drag);
+      }
     }
 
-    function normalized(d) {
-      const x = Math.round(Math.min(d.x0, d.x1));
-      const y = Math.round(Math.min(d.y0, d.y1));
-      return { x, y, w: Math.round(Math.max(d.x0, d.x1)) - x, h: Math.round(Math.max(d.y0, d.y1)) - y };
-    }
-
-    function showDraw() {
-      const r = normalized(drag);
-      const k = canvas.getBoundingClientRect().width / canvas.width;
-      Object.assign(draw.style, {
-        left: `${r.x * k}px`, top: `${r.y * k}px`, width: `${r.w * k}px`, height: `${r.h * k}px`,
-      });
-      draw.hidden = false;
+    function finish() {
+      const d = drag;
+      drag = null;
+      draw.hidden = true;
+      const a = d.pts[0];
+      const b = last(d);
+      const r = boxOf(a, b);
+      if (HIDE_TOOLS.has(d.tool)) {
+        drag = d; // hideArea reads drag.tool
+        if (r.w >= 3 && r.h >= 3) hideArea(r);
+        drag = null;
+        paint();
+        return;
+      }
+      const tiny =
+        (d.tool === "rect" && (r.w < 3 || r.h < 3)) ||
+        (d.tool === "arrow" && Math.hypot(b.x - a.x, b.y - a.y) < 6 * scale);
+      if (tiny) {
+        paint();
+        return;
+      }
+      const out = cloneCurrent();
+      drawShape(out.getContext("2d"), d);
+      push(out);
     }
 
     canvas.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
+      if (textBox) {
+        commitText(); // click outside the text box = done typing
+        return;
+      }
+      if (prefs.tool === "text") {
+        textPending = true; // open on pointerup, after the browser's own focus handling
+        return;
+      }
       canvas.setPointerCapture(e.pointerId);
-      const p = toImage(e);
-      drag = { x0: p.x, y0: p.y, x1: p.x, y1: p.y };
-      showDraw();
+      drag = {
+        tool: prefs.tool,
+        color: prefs.color,
+        width: SIZES[prefs.size].stroke * scale,
+        pts: [toImage(e)],
+      };
+      preview();
     });
 
     canvas.addEventListener("pointermove", (e) => {
       if (!drag) return;
       const p = toImage(e);
-      drag.x1 = p.x;
-      drag.y1 = p.y;
-      showDraw();
+      if (drag.tool === "pen") drag.pts.push(p);
+      else drag.pts[1] = p;
+      preview();
     });
 
     canvas.addEventListener("pointerup", (e) => {
+      if (textPending) {
+        textPending = false;
+        openText(toImage(e));
+        return;
+      }
       if (!drag) return;
       // Use the release point: the last pointermove may have been coalesced away.
       const p = toImage(e);
-      drag.x1 = p.x;
-      drag.y1 = p.y;
-      const r = normalized(drag);
-      drag = null;
-      draw.hidden = true;
-      if (r.w >= 3 && r.h >= 3) apply(r);
+      if (drag.tool === "pen") drag.pts.push(p);
+      else drag.pts[1] = p;
+      finish();
     });
 
     canvas.addEventListener("pointercancel", cancelDrag);
+
+    // --- text ---
+
+    function openText(p) {
+      const px = SIZES[prefs.size].text * scale; // font size in image px
+      const lh = px * 1.25;
+      const k = displayScale();
+      const el = h("textarea", { class: "text-in", rows: 1, spellcheck: false, ariaLabel: "Text" });
+      // Click point = middle of the first line.
+      const y = p.y - lh / 2;
+      Object.assign(el.style, {
+        left: `${p.x * k}px`,
+        top: `${y * k}px`,
+        fontSize: `${px * k}px`,
+        fontFamily: FONT,
+        color: prefs.color,
+        caretColor: prefs.color,
+      });
+      wrap.append(el);
+      textBox = { el, x: p.x, y, px, color: prefs.color };
+      requestAnimationFrame(() => el.focus());
+    }
+
+    function cancelText() {
+      if (!textBox) return;
+      textBox.el.remove();
+      textBox = null;
+    }
+
+    function commitText() {
+      if (!textBox) return;
+      const t = textBox;
+      cancelText();
+      const lines = t.el.value.replace(/\s+$/, "").split("\n");
+      if (!lines.join("").trim()) return;
+      const out = cloneCurrent();
+      const o = out.getContext("2d");
+      o.font = `600 ${t.px}px ${FONT}`;
+      o.fillStyle = t.color;
+      o.textBaseline = "middle";
+      lines.forEach((line, i) => o.fillText(line, t.x, t.y + (i + 0.5) * t.px * 1.25));
+      push(out);
+    }
   }
 })();
