@@ -91,6 +91,7 @@
     undo: ["M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3"],
     redo: ["M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"],
     copy: ["M9 9h11v11H9zM5 15H4V4h11v1"],
+    save: ["M12 4v11M7 10l5 5 5-5M5 20h14"],
     close: ["M6 6l12 12M18 6L6 18"],
     settings: ["M4 7h9M17 7h3M4 17h3M11 17h9", "M13 5h4v4h-4zM7 15h4v4H7z"],
     scissors: ["M8.5 8.5L20 20M15.5 8.5L4 20", "M3 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0M15 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0"],
@@ -264,6 +265,8 @@
       if (!v.cancelDrag()) close();
     } else if (e.key === "Enter" || (mod && k === "c")) {
       v.copy();
+    } else if (mod && k === "s") {
+      v.save(); // also stops the browser's "Save page as"
     } else if (mod && (k === "y" || (k === "z" && e.shiftKey)) && v.redo) {
       v.redo();
     } else if (mod && k === "z" && v.undo) {
@@ -289,9 +292,35 @@
       toast(`Copy failed: ${err.message}${hint}`);
       return;
     }
-    // Leave only a short confirmation, then remove everything.
+    finish("Copied to clipboard");
+  }
+
+  // Download through an <a download> link: no `downloads` permission needed,
+  // and the browser's own "Ask where to save" setting still applies.
+  function saveCanvas(canvas) {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        toast("Save failed");
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      h("a", { href: url, download: fileName() }).click();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      finish("Download started");
+    }, "image/png");
+  }
+
+  function fileName() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, "0");
+    return `snap-blur-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}-` +
+      `${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.png`;
+  }
+
+  // Leave only a short confirmation, then remove everything.
+  function finish(message) {
     session.view.root.remove();
-    toast("Copied to clipboard");
+    toast(message);
     const s = detach();
     s.host.style.setProperty("pointer-events", "none", "important");
     setTimeout(() => s.host.remove(), 1200);
@@ -323,6 +352,7 @@
     const sel = h("div", { class: "sel", hidden: true }, handles);
     const bar = h("div", { class: "float bar", hidden: true }, [
       btn("copy", "Copy", { class: "primary", title: "Copy (Enter)", onclick: () => copySelection() }),
+      btn("save", "Save", { title: "Save as PNG (Ctrl+S)", onclick: () => saveSelection() }),
       btn("pen", "Markup", { title: "Hide info or annotate before copying", onclick: () => showMarkup(cropSelection()) }),
       btn("close", "Cancel", { title: "Cancel (Esc)", onclick: close }, true),
     ]);
@@ -423,9 +453,14 @@
       if (rect) copyCanvas(cropSelection());
     }
 
+    function saveSelection() {
+      if (rect) saveCanvas(cropSelection());
+    }
+
     setView({
       root,
       copy: copySelection,
+      save: saveSelection,
       cancelDrag() {
         if (!drag && !rect) return false;
         drag = null;
@@ -496,6 +531,7 @@
       undoBtn,
       redoBtn,
       h("span", { class: "sep" }),
+      btn("save", "Save", { title: "Save as PNG (Ctrl+S)", onclick: save }),
       btn("copy", "Copy", { class: "primary", title: "Copy (Enter / Ctrl+C)", onclick: copy }),
       settingsBtn(),
       btn("close", "Close", { title: "Close (Esc)", onclick: close }, true),
@@ -508,7 +544,7 @@
     top.addEventListener("pointerdown", () => commitText());
 
     setView({
-      root, copy, undo, redo, setTool, cancelDrag,
+      root, copy, save, undo, redo, setTool, cancelDrag,
       textEditing: () => !!textBox,
       commitText,
       cancelText,
@@ -593,6 +629,12 @@
       commitText();
       paint();
       copyCanvas(canvas);
+    }
+
+    function save() {
+      commitText();
+      paint();
+      saveCanvas(canvas);
     }
 
     function cancelDrag() {

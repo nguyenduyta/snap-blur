@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Snap Blur",
-  "version": "2.2.0",
-  "description": "Capture the visible tab, crop and blur personal information, then copy to clipboard. Never saves files.",
+  "version": "2.3.0",
+  "description": "Capture the visible tab, crop and blur personal information, then copy to clipboard or save as PNG.",
   "permissions": ["activeTab", "scripting", "clipboardWrite", "storage"],
   "options_ui": {
     "page": "options.html",
