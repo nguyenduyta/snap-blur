@@ -5,8 +5,8 @@
 <h1 align="center">Snap Blur</h1>
 
 <p align="center">
-  Screenshot the current tab, hide personal information, add notes, and copy.<br>
-  A Chrome / Edge extension that <b>never saves files</b>.
+  Screenshot the current tab, hide personal information, add notes, then copy or save.<br>
+  A Chrome / Edge extension that keeps the image <b>on your machine</b>.
 </p>
 
 <p align="center">
@@ -17,8 +17,8 @@
 
 Sharing a screenshot in Slack, a ticket, or a bug report often shows more than you want:
 emails, phone numbers, addresses, tokens, customer data. Snap Blur lets you hide that
-**before** the image leaves your screen. The image goes only to your clipboard.
-Nothing is saved to disk, and nothing is uploaded.
+**before** the image leaves your screen. The image goes to your clipboard, or to a PNG
+file only when you click **Save**. Nothing is uploaded.
 
 ## Features
 
@@ -27,10 +27,10 @@ Nothing is saved to disk, and nothing is uploaded.
 - **Hide information:** Blur, Pixelate, or Redact (solid black box).
 - **Annotate:** Pen, Rectangle, Arrow, and Text, with 6 colors and 3 sizes.
 - **Undo / Redo** for every edit.
-- **Copy to clipboard** with one key, then paste anywhere.
+- **Copy to clipboard** with one key, then paste anywhere, or **Save** as a PNG file.
 - **Custom shortcuts:** change the capture shortcut and every tool key in Settings.
-- **Private by design:** no `downloads`, no host permissions, and no network requests.
-  The image only lives in memory until you copy or cancel. Only your key settings are stored.
+- **Private by design:** no host permissions and no network requests. The image only
+  lives in memory until you copy, save, or cancel. Only your key settings are stored.
 - **Works on strict pages:** the UI lives in a closed Shadow DOM and is built without
   `innerHTML`, so a page's CSP or Trusted Types do not block it.
 
@@ -38,14 +38,16 @@ Nothing is saved to disk, and nothing is uploaded.
 
 **1. Select an area.** Press `Alt+Shift+S` or click the toolbar icon.
 
-<img src="docs/select.png" width="820" alt="Selecting an area on the page, with the Copy / Markup / Cancel toolbar">
+<img src="docs/select.png" width="820" alt="Selecting an area on the page, with the Copy / Save / Markup / Cancel toolbar">
 
 - Drag to select. Drag the handles to resize. Drag inside the area to move it.
 - **Whole screen** selects everything.
 - **Copy** (`Enter`) copies the area right away.
+- **Save** (`Ctrl/Cmd+S`) downloads it as `snap-blur-YYYY-MM-DD-HHMMSS.png`. The browser's
+  download settings apply, including "Ask where to save each file".
 - **Markup** opens the editor so you can hide or annotate first.
 
-**2. Hide and annotate**, then **Copy**.
+**2. Hide and annotate**, then **Copy** or **Save**.
 
 <img src="docs/toolbar.png" width="820" alt="Markup toolbar: blur, pixelate, redact, pen, rectangle, arrow, text, colors, sizes, undo, redo, copy">
 
@@ -88,6 +90,7 @@ Defaults:
 |---|---|
 | `Alt+Shift+S` | Start a capture (change it at `chrome://extensions/shortcuts` or `edge://extensions/shortcuts`) |
 | `Enter` / `Ctrl/Cmd+C` | Copy the selected area |
+| `Ctrl/Cmd+S` | Save the selected area as PNG |
 | `Esc` | Clear the selection, press again to cancel |
 
 **Markup step**
@@ -107,6 +110,7 @@ Defaults:
 | `Ctrl/Cmd+Z` | Undo |
 | `Ctrl/Cmd+Shift+Z`, `Ctrl+Y` | Redo |
 | `Enter` / `Ctrl/Cmd+C` | Copy and close |
+| `Ctrl/Cmd+S` | Save as PNG and close |
 | `Esc` | Cancel the current drag, then close |
 
 **Text tool:** click on the image, type, then press `Enter` to place the text.
