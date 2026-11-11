@@ -5,7 +5,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   try {
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: "png" });
     const target = { tabId: tab.id };
-    await chrome.scripting.executeScript({ target, files: ["content.js"] });
+    await chrome.scripting.executeScript({ target, files: ["keys.js", "content.js"] });
     await chrome.scripting.executeScript({
       target,
       func: (url) => window.__snapBlur.start(url),
@@ -17,5 +17,12 @@ chrome.action.onClicked.addListener(async (tab) => {
     await chrome.action.setBadgeBackgroundColor({ color: "#d93025", tabId: tab.id });
     await chrome.action.setBadgeText({ text: "!", tabId: tab.id });
     setTimeout(() => chrome.action.setBadgeText({ text: "", tabId: tab.id }), 2000);
+  }
+});
+
+// The overlay's settings button (content scripts cannot open the options page).
+chrome.runtime.onMessage.addListener((msg, sender) => {
+  if (msg?.type === "open-options" && sender.id === chrome.runtime.id) {
+    chrome.runtime.openOptionsPage();
   }
 });

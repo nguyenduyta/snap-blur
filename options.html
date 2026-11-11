@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Snap Blur settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header>
+      <img src="icons/icon48.png" width="40" height="40" alt="">
+      <div>
+        <h1>Snap Blur</h1>
+        <p class="muted">Keyboard shortcuts</p>
+      </div>
+    </header>
+
+    <section>
+      <h2>Start a capture</h2>
+      <p class="muted">The browser owns this shortcut. Change it on the browser's shortcuts page.</p>
+      <div class="row">
+        <span>Capture visible tab</span>
+        <kbd id="captureKey">…</kbd>
+        <button id="openShortcuts" type="button">Change…</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Markup tools</h2>
+      <p class="muted">Click a key, then press the new key. One letter, digit or symbol, no modifiers.</p>
+      <div id="tools"></div>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <button id="reset" type="button" class="link">Reset to defaults</button>
+    </section>
+
+    <section>
+      <h2>Fixed keys</h2>
+      <dl class="fixed">
+        <dt><kbd>Enter</kbd> / <kbd>Ctrl/Cmd</kbd>+<kbd>C</kbd></dt><dd>Copy and close</dd>
+        <dt><kbd>Ctrl/Cmd</kbd>+<kbd>Z</kbd></dt><dd>Undo</dd>
+        <dt><kbd>Ctrl/Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>, <kbd>Ctrl</kbd>+<kbd>Y</kbd></dt><dd>Redo</dd>
+        <dt><kbd>Esc</kbd></dt><dd>Cancel the current action, then close</dd>
+      </dl>
+    </section>
+  </main>
+  <script src="keys.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

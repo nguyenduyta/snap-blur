@@ -92,21 +92,12 @@
     redo: ["M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3"],
     copy: ["M9 9h11v11H9zM5 15H4V4h11v1"],
     close: ["M6 6l12 12M18 6L6 18"],
+    settings: ["M4 7h9M17 7h3M4 17h3M11 17h9", "M13 5h4v4h-4zM7 15h4v4H7z"],
     scissors: ["M8.5 8.5L20 20M15.5 8.5L4 20", "M3 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0M15 6a3 3 0 1 0 6 0a3 3 0 1 0-6 0"],
   };
 
-  const TOOLS = [
-    ["blur", "Blur", "B"],
-    ["pixelate", "Pixelate", "P"],
-    ["box", "Redact", "K"],
-    null,
-    ["pen", "Pen", "D"],
-    ["rect", "Rectangle", "R"],
-    ["arrow", "Arrow", "A"],
-    ["text", "Text", "T"],
-  ];
-  const TOOL_KEYS = Object.fromEntries(TOOLS.filter(Boolean).map(([n, , k]) => [k.toLowerCase(), n]));
-  const HIDE_TOOLS = new Set(["blur", "pixelate", "box"]);
+  const TOOLS = globalThis.SNAP_BLUR_TOOLS; // from keys.js, injected first
+  const HIDE_TOOLS = new Set(TOOLS.filter((t) => t.group === "hide").map((t) => t.name));
   const COLORS = ["#ff3b30", "#ffcc00", "#34c759", "#0a84ff", "#000000", "#ffffff"];
   // CSS px; multiplied by the capture scale so results look the same on any display.
   const SIZES = { s: { stroke: 2, text: 16, dot: 6 }, m: { stroke: 4, text: 22, dot: 10 }, l: { stroke: 7, text: 32, dot: 14 } };
@@ -161,6 +152,13 @@
       iconOnly ? [icon(name)] : [icon(name), label]);
   }
 
+  // Content scripts cannot open the options page themselves; the service worker does.
+  function settingsBtn() {
+    return btn("settings", "Shortcut settings", {
+      onclick: () => chrome.runtime.sendMessage({ type: "open-options" }),
+    }, true);
+  }
+
   function newCanvas(w, hgt) {
     const c = document.createElement("canvas");
     c.width = w;
@@ -185,6 +183,7 @@
   async function start(dataUrl) {
     close();
     const bitmap = await decode(dataUrl);
+    const keys = await globalThis.snapBlurLoadKeys(); // tool name -> key
     const shot = newCanvas(bitmap.width, bitmap.height);
     shot.getContext("2d").drawImage(bitmap, 0, 0);
     bitmap.close();
@@ -207,6 +206,8 @@
       // Image pixels per CSS pixel at capture time (device ratio x zoom).
       scaleX: shot.width / window.innerWidth,
       scaleY: shot.height / window.innerHeight,
+      keys,
+      keyToTool: Object.fromEntries(Object.entries(keys).map(([tool, key]) => [key, tool])),
       view: null, // current step, see showSelect / showMarkup
       cleanups: [],
     };
@@ -267,8 +268,8 @@
       v.redo();
     } else if (mod && k === "z" && v.undo) {
       v.undo();
-    } else if (!mod && !e.altKey && v.setTool && TOOL_KEYS[k]) {
-      v.setTool(TOOL_KEYS[k]);
+    } else if (!mod && !e.altKey && v.setTool && session.keyToTool[globalThis.snapBlurKeyOf(e)]) {
+      v.setTool(session.keyToTool[globalThis.snapBlurKeyOf(e)]);
     } else {
       handled = false;
     }
@@ -328,6 +329,7 @@
     const hint = h("div", { class: "float hint" }, [
       h("span", { textContent: "Drag to select an area" }),
       h("button", { textContent: "Whole screen", onclick: () => { rect = { x: 0, y: 0, w: vw, h: vh }; layout(); } }),
+      settingsBtn(),
       btn("close", "Cancel", { title: "Cancel (Esc)", onclick: close }, true),
     ]);
     const root = h("div", { class: "root select" }, [view, dim, sel, bar, hint]);
@@ -451,15 +453,12 @@
     // --- toolbar ---
     const toolBtns = {};
     const toolSeg = h("div", { class: "seg", role: "toolbar", ariaLabel: "Tools" });
-    for (const t of TOOLS) {
-      if (!t) {
-        toolSeg.append(h("span", { class: "sep" }));
-        continue;
-      }
-      const [name, label, key] = t;
+    TOOLS.forEach(({ name, label, group }, i) => {
+      if (i > 0 && TOOLS[i - 1].group !== group) toolSeg.append(h("span", { class: "sep" }));
+      const key = globalThis.snapBlurKeyLabel(session.keys[name]);
       toolBtns[name] = btn(name, label, { title: `${label} (${key})`, onclick: () => setTool(name) }, true);
       toolSeg.append(toolBtns[name]);
-    }
+    });
 
     const strength = h("input", {
       type: "range", min: 1, max: 10, value: prefs.strength,
@@ -498,6 +497,7 @@
       redoBtn,
       h("span", { class: "sep" }),
       btn("copy", "Copy", { class: "primary", title: "Copy (Enter / Ctrl+C)", onclick: copy }),
+      settingsBtn(),
       btn("close", "Close", { title: "Close (Esc)", onclick: close }, true),
     ]);
     const wrap = h("div", { class: "wrap" }, [canvas, draw]);
